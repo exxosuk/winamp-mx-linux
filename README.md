@@ -157,8 +157,18 @@ refresh (60 here) to line them up.
 - The classic desktop installer is no longer easy to find by clicking
   around winamp.com - the site itself has pivoted to a mobile app and
   "Winamp For Artists" business, and the desktop download only exists
-  now as this stable, unlisted URL. If it ever stops resolving, the
-  script will tell you rather than failing silently (it checks the
-  download is actually a Windows executable before handing it to Wine).
+  now as this stable, unlisted URL. Because that could disappear without
+  notice, a copy of the installer is kept in this repository:
+
+      winamp_latest_full.exe   13,034,408 bytes
+      sha256  fa09d24d7481dbdfc1cff6aaa92d2aec908e037a22a02346f6feeee5d6ba688e
+
+  The script still fetches the live download first, so you get the current
+  version when there is one, and falls back to this copy only when the
+  download fails or returns something that is not a Windows executable.
+  Both fallback paths are tested. The file is Winamp's own unmodified
+  installer as served by download.winamp.com on 3 September 2026; it is
+  redistributed here as freeware, and if Winamp's owners would rather it
+  were not, removing it costs one commit.
 - The installer is unsigned freeware from Winamp's own domain, not a
   third-party mirror - no adware bundling, unlike sites such as Softonic.

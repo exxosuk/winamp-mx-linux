@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.0
+
+- The Winamp installer is now kept in the repository, because the classic
+  desktop download exists at a single unlisted URL that could vanish. The
+  script still downloads the live version first and only falls back to the
+  bundled copy when the download fails or returns something that is not a
+  Windows executable
+- Both fallback paths tested: dead URL, and a URL that answers with HTML
+  instead of an executable. The live download was checked too, to confirm the
+  bundled copy is not used when it does not need to be
+
+
 ## 1.4.0
 
 - README records a tested-features sweep: playback controls, seeking, volume,

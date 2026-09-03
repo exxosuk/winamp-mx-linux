@@ -31,6 +31,28 @@ usage() {
     exit 1
 }
 
+use_bundled_installer() {
+    # The classic desktop download is not linked from winamp.com any more and
+    # exists only at one unlisted URL, so a copy is kept beside this script.
+    # It is only reached when the live download fails or hands back something
+    # that is not a Windows executable.
+    local bundled
+    bundled="$(cd "$(dirname "$0")" && pwd)/winamp_latest_full.exe"
+    if [ ! -f "$bundled" ]; then
+        echo ""
+        echo "ERROR: the download failed and there is no bundled copy beside this"
+        echo "script. The download.winamp.com link may have moved - check"
+        echo "https://winamp.com by hand."
+        exit 1
+    fi
+    if ! file -b "$bundled" | grep -qi "PE32"; then
+        echo "ERROR: the bundled installer is not a Windows executable."
+        exit 1
+    fi
+    echo "    Falling back to the copy bundled with this script."
+    cp "$bundled" "$INSTALLER"
+}
+
 apply_wine_fixes() {
     # Three things Winamp needs changed to behave under Wine. Each one was
     # found the hard way on MX 23 with Wine 9.21; see README.md for the detail.
@@ -96,14 +118,16 @@ do_install() {
     fi
 
     echo "==> Downloading the latest Winamp installer..."
-    curl -L --fail -o "$INSTALLER" "$DOWNLOAD_URL"
+    if ! curl -L --fail -o "$INSTALLER" "$DOWNLOAD_URL"; then
+        echo "    Download failed."
+        use_bundled_installer
+    fi
 
     FILETYPE=$(file -b "$INSTALLER")
     if ! echo "$FILETYPE" | grep -qi "PE32"; then
-        echo ""
-        echo "ERROR: what got downloaded isn't a Windows executable (got: $FILETYPE)."
-        echo "The download.winamp.com link may have moved - check https://winamp.com by hand."
-        exit 1
+        echo "    What came back is not a Windows executable (got: $FILETYPE)."
+        use_bundled_installer
+        FILETYPE=$(file -b "$INSTALLER")
     fi
     echo "    Got a real installer: $FILETYPE"
 
