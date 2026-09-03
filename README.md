@@ -189,6 +189,12 @@ Measured after the change: Winamp starts in **2 seconds** rather than 21, MIDI
 plays, and there are **no wedged threads** - so nothing is left behind when it
 closes.
 
+A short demo MIDI is installed beside Winamp's own `demo.mp3` and seeded into
+the playlist, so a fresh install can demonstrate MIDI without you finding a
+file first. It was written for this project rather than borrowed, so there is
+nothing here that is not ours to hand out. An existing playlist is never
+replaced.
+
 The soundfont is `/usr/share/sounds/sf2/TimGM6mb.sf2` (5 MB, installed by the
 `timgm6mb-soundfont` package). The plugin asks for one on first run if it has
 none, so the installer writes the setting up front. For much better sound,

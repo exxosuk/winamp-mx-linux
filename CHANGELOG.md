@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.0
+
+- A short demo MIDI is installed beside Winamp's own demo.mp3 and added to the
+  playlist on a fresh install, the same way Winamp seeds its own demo, so MIDI
+  can be heard working without hunting for a file. Written for this project,
+  not borrowed from anywhere
+- An existing playlist is left alone; only a fresh install is seeded
+
+
 ## 2.0.0
 
 - **MIDI works properly for the first time.** Winamp now synthesises MIDI

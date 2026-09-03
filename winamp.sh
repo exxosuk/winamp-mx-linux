@@ -298,6 +298,25 @@ do_install() {
         fi
     done
 
+    echo "==> Adding a demo MIDI to the playlist..."
+    # Winamp ships demo.mp3 and puts it in the playlist so a fresh install has
+    # something to play. MIDI is the part most likely to be doubted here, so a
+    # short MIDI demo goes in beside it - written for this project, so there is
+    # nothing to be redistributed that is not ours to redistribute.
+    appdata="$WINE_PREFIX/drive_c/users/$USER/AppData/Roaming/Winamp"
+    if [ -f "$(dirname "$0")/demo.mid" ]; then
+        mkdir -p "$appdata"
+        cp "$(dirname "$0")/demo.mid" "$appdata/demo.mid"
+        # Only seed the playlist when there isn't one already - nobody wants
+        # their playlist replaced by a reinstall.
+        if [ ! -s "$appdata/winamp.m3u8" ]; then
+            printf '#EXTM3U\r\n%s\r\n%s\r\n' \
+                'C:\users\'"$USER"'\AppData\Roaming\Winamp\demo.mp3' \
+                'C:\users\'"$USER"'\AppData\Roaming\Winamp\demo.mid' \
+                > "$appdata/winamp.m3u8"
+        fi
+    fi
+
     echo "==> Creating the launcher..."
     mkdir -p "$APPS_DIR"
     cat > "$LAUNCHER" <<EOF
