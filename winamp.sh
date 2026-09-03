@@ -70,13 +70,16 @@ apply_wine_fixes() {
         /v UseXVidMode /t REG_SZ /d N /f >/dev/null 2>&1 || true
 
     # (b1) winealsa.drv is Wine's only MIDI driver, and it wedges a thread in
-    #      the kernel's ALSA sequencer (snd_use_lock_sync_helper, in
-    #      uninterruptible sleep, deaf to SIGKILL), so a Winamp that has
-    #      loaded it never fully exits - the window closes, a dead process
-    #      stays until reboot. It is left ON, because without it .mid files do
-    #      not play at all, and a player that cannot play what you ask for is
-    #      the worse of the two. The "Winamp (no MIDI)" entry below turns it
-    #      off for a session where that trade is worth reversing.
+    #      the kernel's ALSA sequencer (uninterruptible, deaf to SIGKILL), so a
+    #      Winamp that loads it never fully exits, starts in about twenty
+    #      seconds while it waits on the corpses of previous runs, and locks up
+    #      when a second MIDI file is played. With MIDI now synthesised inside
+    #      Winamp, nothing needs the driver at all, so it is turned off in the
+    #      prefix registry - which covers every way Winamp can be started,
+    #      including Open With. Measured: 2s startup, MIDI playing, no wedged
+    #      threads.
+    WINEPREFIX="$WINE_PREFIX" wine reg add 'HKCU\Software\Wine\DllOverrides' \
+        /v winealsa.drv /t REG_SZ /d "" /f >/dev/null 2>&1 || true
 
     # (b2) The crash handler mails its report to bug@winamp.com through your
     #      default mail client, which under Wine means a mail account setup
@@ -191,34 +194,10 @@ do_install() {
         fi
     fi
 
-    echo "==> Making sure MIDI reaches the synthesiser..."
-    # Wine hands MIDI to the first sequencer device it finds, and on Debian
-    # that is "Midi Through" (snd_seq_dummy) - a loopback that discards
-    # everything. The synth sits behind it and never gets a note: Winamp shows
-    # the time counting up and plays silence. Nothing can rewire it from
-    # outside either; aconnect answers "Connection failed (Invalid argument)".
-    # Removing the loopback leaves the synth as the only MIDI device.
-    if [ ! -f /etc/modprobe.d/winamp-midi-through.conf ]; then
-        echo "blacklist snd_seq_dummy" | \
-            sudo tee /etc/modprobe.d/winamp-midi-through.conf >/dev/null
-        sudo rmmod snd_seq_dummy 2>/dev/null || \
-            echo "    (Midi Through is in use; it will be gone after a reboot)"
+    echo "==> Checking for a General MIDI soundfont..."
+    if [ ! -f /usr/share/sounds/sf2/TimGM6mb.sf2 ]; then
+        sudo apt install -y timgm6mb-soundfont
     fi
-
-    # The packaged timidity daemon runs as a system user and cannot reach a
-    # per-session PulseAudio, which is why it fails to start on a desktop.
-    # Run the synth as the logged-in user instead.
-    mkdir -p "$HOME/.config/autostart"
-    cat > "$HOME/.config/autostart/timidity-synth.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=TiMidity MIDI synthesiser
-Comment=ALSA sequencer synth for Winamp MIDI, run as the logged-in user because PulseAudio is per-session
-Exec=timidity -iA -Os -B4,12
-Terminal=false
-X-GNOME-Autostart-enabled=true
-NoDisplay=true
-EOF
 
     echo "==> Setting up a dedicated 32-bit Wine prefix at $WINE_PREFIX..."
     export WINEPREFIX="$WINE_PREFIX"
@@ -272,6 +251,37 @@ EOF
     fi
     ICON_PNG=$(find "$ICON_DIR" -name "*.png" 2>/dev/null | head -n1)
     ICON_PATH="${ICON_PNG:-$ICON_DIR/winamp.ico}"
+
+    echo "==> Installing a MIDI synthesiser plugin..."
+    # Winamp's own in_midi hands MIDI to Wine's MIDI driver, which opens an
+    # ALSA sequencer client - and closing that client wedges a thread in the
+    # kernel for good, so the second MIDI file you play locks Winamp up and
+    # leaves a process nothing can kill. in_aSyFon renders MIDI to audio
+    # inside Winamp instead and sends it out through the ordinary output
+    # plugin, so no MIDI device is ever opened. Free, from synthfont.com.
+    if [ ! -f "$WINAMP_DIR/Plugins/in_aSyFon.dll" ]; then
+        setup="$(dirname "$0")/WinampPluginSetup.exe"
+        if [ ! -f "$setup" ]; then
+            setup="/tmp/WinampPluginSetup.exe"
+            curl -L --fail -o "$setup" "http://www.synthfont.com/WinampPluginSetup.exe" || true
+        fi
+        if [ -f "$setup" ] && file -b "$setup" | grep -qi "PE32"; then
+            WINEPREFIX="$WINE_PREFIX" wine "$setup" /S >/dev/null 2>&1 || true
+        fi
+    fi
+
+    if [ -f "$WINAMP_DIR/Plugins/in_aSyFon.dll" ]; then
+        # Point it at a soundfont up front; without one it stops on startup
+        # with a file chooser, which is no way to greet somebody.
+        sfdir="$WINE_PREFIX/drive_c/users/$USER/AppData/Roaming/SynthFont"
+        mkdir -p "$sfdir"
+        [ -f "$sfdir/SyfonWA.ini" ] || printf '[Options]\nSoundFont=Z:\\usr\\share\\sounds\\sf2\\TimGM6mb.sf2\n' > "$sfdir/SyfonWA.ini"
+
+        # in_midi would otherwise claim .mid first and take us back to the
+        # driver that hangs.
+        [ -f "$WINAMP_DIR/Plugins/in_midi.dll" ] && \
+            mv "$WINAMP_DIR/Plugins/in_midi.dll" "$WINAMP_DIR/Plugins/in_midi.dll.disabled"
+    fi
 
     echo "==> Applying the fixes this install needs under Wine..."
     apply_wine_fixes "$WINAMP_EXE"

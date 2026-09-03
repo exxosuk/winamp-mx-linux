@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.0.0
+
+- **MIDI works properly for the first time.** Winamp now synthesises MIDI
+  itself, through the free in_aSyFon plugin, instead of handing it to Wine's
+  MIDI driver. No MIDI device is opened, so the thread that used to wedge in
+  the kernel's ALSA sequencer is never created
+- With nothing needing Wine's MIDI driver, it is disabled outright. That
+  removes the unkillable processes, the twenty-second startups spent waiting
+  on them, and the taskbar icon that vanished and came back. Measured after:
+  starts in 2 seconds, MIDI playing, no wedged threads
+- `in_midi` is disabled so it cannot claim `.mid` first, and the plugin's
+  soundfont is configured at install time - otherwise it stops on first run
+  with a file chooser
+- Installs `timgm6mb-soundfont` if no soundfont is present, and bundles the
+  plugin installer alongside the Winamp one in case synthfont.com goes the way
+  of winamp.com
+- Dropped the TiMidity setup entirely: nothing routes MIDI through ALSA now
+
+
 ## 1.15.0
 
 - Winamp started in about twenty seconds; it now takes two to four. The delay

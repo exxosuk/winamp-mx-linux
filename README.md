@@ -158,81 +158,42 @@ d3dx9 in place of Wine's:
 then set `visplugin_name=vis_milk2.dll` back in `winamp.ini`. That pulls
 redistributable DLLs from Microsoft, so whether you want them is your call.
 
-### Winamp will not close, and cannot be killed
+### MIDI, and why Winamp does not use Wine's MIDI driver
 
-Symptom: the window closes but the process stays, and `kill -9` does not shift
-it. `ps` shows a zombie that will not go away:
-
-    $ ps -eo pid,stat,comm | grep winamp
-      33969 Zl   winamp.exe
-
-The cause is in the kernel, not in Winamp. Wine loads `winealsa.drv` for MIDI -
-audio itself goes through PulseAudio - and it opens an ALSA sequencer client at
-startup. One thread then wedges permanently:
+Winamp's own `in_midi` plugin hands MIDI to Wine's MIDI driver, which opens an
+ALSA sequencer client. Closing that client wedges a thread inside the kernel:
 
     tid 33971  state=D (uninterruptible)  wchan=snd_use_lock_sync_helper
 
-A thread in `D` state ignores SIGKILL by design, so the process can never be
-reaped. Measured on three consecutive launches: every one had exactly one
-thread stuck there. Started with `WINEDLLOVERRIDES="winealsa.drv=d"`, the count
-was zero and Winamp exited cleanly leaving no zombie.
+`D` state ignores SIGKILL by design, and the kernel's wait there is deliberately
+infinite - the five-second timeout was removed upstream in 2017 because breaking
+out early risked a use-after-free. So the thread never returns. In practice
+that meant: the first MIDI file plays, the second locks Winamp up, the process
+can never be killed and only a reboot clears it, and every later start of
+Winamp took about twenty seconds because it waited on those corpses.
 
-**This is a straight trade, and it cannot be split:**
+None of it is fixable from outside. `aconnect -d` cannot release the stale
+subscriptions ("No subscription is found"), the sequencer module cannot be
+reloaded while the corpses hold it, and Wine's documented `MidiPort` registry
+setting no longer exists in current Wine.
 
-| | MIDI files | closing |
-|---|---|---|
-| driver on (**the default**) | play | leaves a dead process until reboot |
-| driver off | do not play at all - and Winamp shows "unknown MMSYSTEM error" on `.mid` unless its `in_midi` plugin is disabled too | clean |
+The way out is not to use Wine's MIDI at all. This installer adds
+[in_aSyFon](http://www.synthfont.com/in_aSyFon_news.html), a free Winamp input
+plugin that renders MIDI to audio *inside* Winamp with a soundfont and sends it
+out through the ordinary output plugin. No MIDI device is opened, so there is
+nothing to wedge. `in_midi` is disabled so it cannot claim `.mid` first, and
+`winealsa.drv` is switched off in the prefix registry since nothing needs it
+any more.
 
-The default keeps MIDI, because a player that will not play what you ask it for
-is the worse failure. The **Winamp (no MIDI)** menu entry reverses it for a
-session where leaving dead processes about matters more. Zombies already
-created only clear on a reboot.
+Measured after the change: Winamp starts in **2 seconds** rather than 21, MIDI
+plays, and there are **no wedged threads** - so nothing is left behind when it
+closes.
 
-### A mail account setup dialog appears out of nowhere
-
-Winamp's crash handler mails its report to `bug@winamp.com` through your
-default mail client - `SendData=1` and `UseClient=1` in
-`Plugins/feedback.ini`. Under Wine that surfaces as a mail account setup
-wizard appearing after a crash, which is baffling if you do not know what
-asked for it. Nobody is reading those reports now, so the installer renames
-`Plugins/gen_crasher.dll` and `reporter.exe` out of the way. Rename them back
-if you want the handler.
-
-### MIDI files do not play
-
-Winamp lists `.MID`, `.MIDI`, `.RMI` and `.KAR` among the types it handles, but
-Wine has no synthesiser to hand them to:
-
-    err:winediag:MIDIMAP_drvOpen No software synthesizer midi port found,
-    Midi sound output probably won't work.
-
-The installer handles this, and there is a trap in it worth knowing about.
-`timidity` only *Recommends* a soundfont, and MX ships with
-`APT::Install-Recommends "0"`, so installing TiMidity on MX gets you a
-synthesiser whose config points at `/etc/timidity/fluidr3_gm.cfg` - a file that
-was never installed. TiMidity then exits with "Error reading configuration
-file" and never publishes a port, so nothing has changed from Wine's point of
-view. By hand:
-
-    sudo apt install timidity timidity-daemon timgm6mb-soundfont
-    sudo sed -i 's|fluidr3_gm.cfg|timgm6mb.cfg|' /etc/timidity/timidity.cfg
-    sudo service timidity start
-
-Check it with `aconnect -l`: a `TiMidity` client should appear alongside
-`System` and `Midi Through`. **Then restart Winamp** - Wine enumerates MIDI
-devices once when a process starts, so a Winamp that was already running will
-not see a synth that appeared afterwards.
-
-**MIDI is off by default**, because the driver that provides it is the one that
-hangs Winamp on exit - see the section above. To turn it on, drop
-`WINEDLLOVERRIDES="winealsa.drv=d"` from the `Exec=` line in
-`~/.local/share/applications/winamp.desktop`. MIDI then plays, and Winamp goes
-back to leaving an unkillable process behind every time it closes. That is the
-whole trade, stated plainly; the default errs towards a player that shuts
-down.
-
-Everything else in Winamp's extension list is unaffected.
+The soundfont is `/usr/share/sounds/sf2/TimGM6mb.sf2` (5 MB, installed by the
+`timgm6mb-soundfont` package). The plugin asks for one on first run if it has
+none, so the installer writes the setting up front. For much better sound,
+`sudo apt install fluid-soundfont-gm` and point `SoundFont=` in
+`AppData/Roaming/SynthFont/SyfonWA.ini` at the larger set.
 
 ### The visualisation judders
 
