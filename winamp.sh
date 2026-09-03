@@ -23,6 +23,8 @@ DESKTOP_DIR="$HOME/Desktop"
 APPS_DIR="$HOME/.local/share/applications"
 ICON_DIR="$HOME/.local/share/icons/winamp"
 LAUNCHER="$APPS_DIR/winamp.desktop"
+BIN_DIR="$HOME/.local/bin"
+WINAMP_DIR=""   # filled in once winamp.exe has been found
 
 usage() {
     echo "Usage: $0 [install|uninstall]"
@@ -232,6 +234,7 @@ do_install() {
         echo "Have a look under $WINE_PREFIX/drive_c manually."
         exit 1
     fi
+    WINAMP_DIR=$(dirname "$WINAMP_EXE")
     echo "    Found: $WINAMP_EXE"
 
     echo "==> Extracting the Winamp icon..."
@@ -261,13 +264,37 @@ StartupNotify=true
 EOF
     chmod +x "$LAUNCHER"
 
-    # A second entry for the times MIDI matters more than a clean exit.
+    # With winealsa.drv off there are no MIDI ports, and Winamp's in_midi
+    # plugin answers a .mid with a modal "unknown MMSYSTEM error" the moment
+    # you press play. Take the plugin out of the default configuration too, so
+    # the two settings agree with each other.
+    [ -f "$WINAMP_DIR/Plugins/in_midi.dll" ] && \
+        mv "$WINAMP_DIR/Plugins/in_midi.dll" "$WINAMP_DIR/Plugins/in_midi.dll.disabled"
+
+    # A launcher for the times MIDI matters more than a clean exit. It turns
+    # both pieces back on, then puts the plugin away again ten seconds later -
+    # not on exit, because a Winamp started with winealsa often never exits,
+    # and the plugin would then be armed for the next ordinary launch.
+    mkdir -p "$BIN_DIR"
+    cat > "$BIN_DIR/winamp-midi" <<EOF
+#!/bin/sh
+PLUGINS="$WINAMP_DIR/Plugins"
+[ -f "\$PLUGINS/in_midi.dll.disabled" ] && mv "\$PLUGINS/in_midi.dll.disabled" "\$PLUGINS/in_midi.dll"
+WINEPREFIX="$WINE_PREFIX" WINEDLLOVERRIDES="winealsa.drv=b" wine "$WINAMP_EXE" "\$@" &
+WINEPID=\$!
+( sleep 10
+  [ -f "\$PLUGINS/in_midi.dll" ] && mv "\$PLUGINS/in_midi.dll" "\$PLUGINS/in_midi.dll.disabled"
+) >/dev/null 2>&1 &
+wait \$WINEPID
+EOF
+    chmod +x "$BIN_DIR/winamp-midi"
+
     cat > "$APPS_DIR/winamp-midi.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Winamp (MIDI enabled)
 Comment=Winamp with MIDI playback - leaves an unkillable process behind when it closes
-Exec=env WINEPREFIX="$WINE_PREFIX" WINEDLLOVERRIDES="winealsa.drv=b" wine "$WINAMP_EXE" %f
+Exec=$BIN_DIR/winamp-midi %f
 Icon=$ICON_PATH
 Terminal=false
 Categories=AudioVideo;Audio;Player;
@@ -300,6 +327,7 @@ do_uninstall() {
     rm -rf "$WINE_PREFIX"
     rm -f "$LAUNCHER"
     rm -f "$APPS_DIR/winamp-midi.desktop"
+    rm -f "$BIN_DIR/winamp-midi"
     rm -f "$DESKTOP_DIR/winamp.desktop"
     rm -rf "$ICON_DIR"
     update-desktop-database "$APPS_DIR" >/dev/null 2>&1 || true

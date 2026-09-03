@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.11.0
+
+- Fixed "unknown MMSYSTEM error" when playing a MIDI file. Disabling
+  winealsa.drv in 1.10.0 left Winamp with no MIDI ports but its `in_midi`
+  plugin still enabled, so pressing play on a `.mid` threw a modal error. The
+  plugin is now disabled alongside the driver, and the same `.mid` that
+  produced the error now loads and plays nothing rather than complaining
+- The MIDI launcher is a small script rather than an environment variable on
+  the desktop entry. It enables the plugin, starts Winamp, and disables the
+  plugin again ten seconds later - not on exit, because a Winamp started with
+  MIDI often never exits, which would leave the plugin armed for the next
+  ordinary launch. Verified: enabled at +6s, put away by +16s, MIDI still
+  reaching the synthesiser in the running session
+
+
 ## 1.10.0
 
 - The winealsa.drv workaround moved from the launcher into the Wine prefix

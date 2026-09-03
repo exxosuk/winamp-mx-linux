@@ -187,8 +187,17 @@ leaves the bug in place for exactly the case you are most likely to hit.
 The cost is MIDI playback (see below); everything else, WASAPI audio included,
 is unaffected. Zombies already created only clear on a reboot.
 
-A second menu entry, **Winamp (MIDI enabled)**, starts it with the driver back
-on for when MIDI matters more than a clean exit.
+With no MIDI driver there are also no MIDI ports, and Winamp's `in_midi`
+plugin answers a `.mid` with a modal **"unknown MMSYSTEM error"** the moment
+you press play. So the plugin is taken out of the default configuration too -
+the two settings have to agree, or turning off the driver just moves the
+problem.
+
+A second menu entry, **Winamp (MIDI enabled)**, turns both back on for one
+run. It puts the plugin away again ten seconds after starting rather than on
+exit, because a Winamp started that way frequently never exits - and the
+plugin would then still be armed for the next ordinary launch, which is
+exactly where the MMSYSTEM error comes from.
 
 ### A mail account setup dialog appears out of nowhere
 
