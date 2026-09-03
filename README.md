@@ -4,6 +4,10 @@ Installs the latest classic Winamp desktop player under Wine, with an
 application menu entry and a desktop icon, similar to a normal Windows
 install.
 
+![Winamp running on MX Linux under Wine](screenshot.png)
+
+*Playlist track names are blurred in the screenshot.*
+
 ## Why not the Snap
 
 Snap packages need snapd, which needs systemd running as PID 1. MX Linux
