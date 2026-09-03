@@ -69,16 +69,14 @@ apply_wine_fixes() {
     WINEPREFIX="$WINE_PREFIX" wine reg add "HKCU\\Software\\Wine\\X11 Driver" \
         /v UseXVidMode /t REG_SZ /d N /f >/dev/null 2>&1 || true
 
-    # (b1) winealsa.drv is loaded solely for MIDI - audio goes through
-    #      PulseAudio - and it wedges a thread in the kernel's ALSA sequencer
-    #      (snd_use_lock_sync_helper, uninterruptible, ignores SIGKILL), so
-    #      Winamp can never finish closing. Setting it in the prefix registry
-    #      rather than on the launcher covers every way Winamp can be started:
-    #      the menu entry, the desktop icon, file associations and Open With
-    #      all go through the same prefix. Measured: one stuck thread on every
-    #      launch before, none after.
-    WINEPREFIX="$WINE_PREFIX" wine reg add 'HKCU\Software\Wine\DllOverrides' \
-        /v winealsa.drv /t REG_SZ /d "" /f >/dev/null 2>&1 || true
+    # (b1) winealsa.drv is Wine's only MIDI driver, and it wedges a thread in
+    #      the kernel's ALSA sequencer (snd_use_lock_sync_helper, in
+    #      uninterruptible sleep, deaf to SIGKILL), so a Winamp that has
+    #      loaded it never fully exits - the window closes, a dead process
+    #      stays until reboot. It is left ON, because without it .mid files do
+    #      not play at all, and a player that cannot play what you ask for is
+    #      the worse of the two. The "Winamp (no MIDI)" entry below turns it
+    #      off for a session where that trade is worth reversing.
 
     # (b2) The crash handler mails its report to bug@winamp.com through your
     #      default mail client, which under Wine means a mail account setup
@@ -264,43 +262,21 @@ StartupNotify=true
 EOF
     chmod +x "$LAUNCHER"
 
-    # With winealsa.drv off there are no MIDI ports, and Winamp's in_midi
-    # plugin answers a .mid with a modal "unknown MMSYSTEM error" the moment
-    # you press play. Take the plugin out of the default configuration too, so
-    # the two settings agree with each other.
-    [ -f "$WINAMP_DIR/Plugins/in_midi.dll" ] && \
-        mv "$WINAMP_DIR/Plugins/in_midi.dll" "$WINAMP_DIR/Plugins/in_midi.dll.disabled"
-
-    # A launcher for the times MIDI matters more than a clean exit. It turns
-    # both pieces back on, then puts the plugin away again ten seconds later -
-    # not on exit, because a Winamp started with winealsa often never exits,
-    # and the plugin would then be armed for the next ordinary launch.
-    mkdir -p "$BIN_DIR"
-    cat > "$BIN_DIR/winamp-midi" <<EOF
-#!/bin/sh
-PLUGINS="$WINAMP_DIR/Plugins"
-[ -f "\$PLUGINS/in_midi.dll.disabled" ] && mv "\$PLUGINS/in_midi.dll.disabled" "\$PLUGINS/in_midi.dll"
-WINEPREFIX="$WINE_PREFIX" WINEDLLOVERRIDES="winealsa.drv=b" wine "$WINAMP_EXE" "\$@" &
-WINEPID=\$!
-( sleep 10
-  [ -f "\$PLUGINS/in_midi.dll" ] && mv "\$PLUGINS/in_midi.dll" "\$PLUGINS/in_midi.dll.disabled"
-) >/dev/null 2>&1 &
-wait \$WINEPID
-EOF
-    chmod +x "$BIN_DIR/winamp-midi"
-
-    cat > "$APPS_DIR/winamp-midi.desktop" <<EOF
+    # The inverse launcher: no MIDI driver, therefore no wedged thread and a
+    # clean exit. Useful for a long session where leaving dead processes about
+    # matters more than being able to play a .mid.
+    cat > "$APPS_DIR/winamp-nomidi.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Winamp (MIDI enabled)
-Comment=Winamp with MIDI playback - leaves an unkillable process behind when it closes
-Exec=$BIN_DIR/winamp-midi %f
+Name=Winamp (no MIDI)
+Comment=Winamp without MIDI - closes cleanly, leaving no background process
+Exec=env WINEPREFIX="$WINE_PREFIX" WINEDLLOVERRIDES="winealsa.drv=d" wine "$WINAMP_EXE" %f
 Icon=$ICON_PATH
 Terminal=false
 Categories=AudioVideo;Audio;Player;
 StartupNotify=true
 EOF
-    chmod +x "$APPS_DIR/winamp-midi.desktop"
+    chmod +x "$APPS_DIR/winamp-nomidi.desktop"
 
     if [ -d "$DESKTOP_DIR" ]; then
         cp "$LAUNCHER" "$DESKTOP_DIR/winamp.desktop"
@@ -326,8 +302,7 @@ do_uninstall() {
 
     rm -rf "$WINE_PREFIX"
     rm -f "$LAUNCHER"
-    rm -f "$APPS_DIR/winamp-midi.desktop"
-    rm -f "$BIN_DIR/winamp-midi"
+    rm -f "$APPS_DIR/winamp-nomidi.desktop"
     rm -f "$DESKTOP_DIR/winamp.desktop"
     rm -rf "$ICON_DIR"
     update-desktop-database "$APPS_DIR" >/dev/null 2>&1 || true

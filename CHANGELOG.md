@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.0
+
+- MIDI is on by default again. 1.10.0 and 1.11.0 disabled Wine's MIDI driver
+  and then Winamp's MIDI plugin to stop the unkillable-process problem, which
+  worked - and left the player unable to play a `.mid` at all. That is the
+  worse failure of the two, so the default is back to MIDI working, with the
+  cost stated plainly
+- Replaced the "Winamp (MIDI enabled)" entry with **Winamp (no MIDI)**, which
+  reverses the trade for a session where a clean exit matters more
+- Measured both ways round: with the driver loaded, MIDI reaches the
+  synthesiser and one thread wedges in the ALSA sequencer; with it disabled,
+  no stuck thread and no MIDI
+
+
 ## 1.11.0
 
 - Fixed "unknown MMSYSTEM error" when playing a MIDI file. Disabling

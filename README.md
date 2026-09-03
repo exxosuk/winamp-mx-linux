@@ -160,44 +160,34 @@ redistributable DLLs from Microsoft, so whether you want them is your call.
 
 ### Winamp will not close, and cannot be killed
 
-Symptom: Winamp appears frozen, closing does nothing, and `kill -9` does not
-shift it. `ps` shows it as a zombie that will not go away:
+Symptom: the window closes but the process stays, and `kill -9` does not shift
+it. `ps` shows a zombie that will not go away:
 
     $ ps -eo pid,stat,comm | grep winamp
       33969 Zl   winamp.exe
 
-The cause is in the kernel, not in Winamp. Wine loads `winealsa.drv` purely for
-MIDI - audio itself goes through PulseAudio - and it opens an ALSA sequencer
-client at startup. One thread then wedges permanently:
+The cause is in the kernel, not in Winamp. Wine loads `winealsa.drv` for MIDI -
+audio itself goes through PulseAudio - and it opens an ALSA sequencer client at
+startup. One thread then wedges permanently:
 
     tid 33971  state=D (uninterruptible)  wchan=snd_use_lock_sync_helper
 
 A thread in `D` state ignores SIGKILL by design, so the process can never be
-reaped and Wine cannot finish shutting down. Measured on three consecutive
-launches: every one had exactly one thread stuck there. Started with
-`WINEDLLOVERRIDES="winealsa.drv=d"`, the count was zero and Winamp exited
-cleanly leaving no zombie.
+reaped. Measured on three consecutive launches: every one had exactly one
+thread stuck there. Started with `WINEDLLOVERRIDES="winealsa.drv=d"`, the count
+was zero and Winamp exited cleanly leaving no zombie.
 
-The installer disables that driver **in the Wine prefix registry**, not on the
-launcher. That matters: a launcher only covers the ways you start Winamp from
-the menu or the desktop, and "Open With" from a file manager goes a different
-route entirely - it sets `WINEPREFIX` and nothing else, so a launcher-only fix
-leaves the bug in place for exactly the case you are most likely to hit.
+**This is a straight trade, and it cannot be split:**
 
-The cost is MIDI playback (see below); everything else, WASAPI audio included,
-is unaffected. Zombies already created only clear on a reboot.
+| | MIDI files | closing |
+|---|---|---|
+| driver on (**the default**) | play | leaves a dead process until reboot |
+| driver off | do not play at all - and Winamp shows "unknown MMSYSTEM error" on `.mid` unless its `in_midi` plugin is disabled too | clean |
 
-With no MIDI driver there are also no MIDI ports, and Winamp's `in_midi`
-plugin answers a `.mid` with a modal **"unknown MMSYSTEM error"** the moment
-you press play. So the plugin is taken out of the default configuration too -
-the two settings have to agree, or turning off the driver just moves the
-problem.
-
-A second menu entry, **Winamp (MIDI enabled)**, turns both back on for one
-run. It puts the plugin away again ten seconds after starting rather than on
-exit, because a Winamp started that way frequently never exits - and the
-plugin would then still be armed for the next ordinary launch, which is
-exactly where the MMSYSTEM error comes from.
+The default keeps MIDI, because a player that will not play what you ask it for
+is the worse failure. The **Winamp (no MIDI)** menu entry reverses it for a
+session where leaving dead processes about matters more. Zombies already
+created only clear on a reboot.
 
 ### A mail account setup dialog appears out of nowhere
 
