@@ -101,9 +101,12 @@ extension off:
 MilkDrop 2's pixel shaders are compiled by `d3dx9`, and Wine's built-in HLSL
 compiler does not understand the `sampler_state` blocks MilkDrop uses. Either:
 
-* turn the shaders off - `nMaxPSVersion=0` under `[settings]` in
+* turn the shaders off - `MaxPSVersion=0` under `[settings]` in
   `Plugins/Milkdrop2/milk2.ini` inside the Wine prefix, which drops MilkDrop
-  back to its non-shader rendering and works. The installer does this for you; or
+  back to its non-shader rendering and works. The installer does this for you.
+  Mind the spelling: it is `MaxPSVersion`, with no `n` in front - MilkDrop's
+  *preset* keys are named `nSomething`, its own settings are not, and the wrong
+  spelling is ignored without any complaint; or
 * install Microsoft's own d3dx9 into the prefix with
   `WINEPREFIX=~/.wine-winamp winetricks d3dx9`, which keeps the shaders. This
   pulls in redistributable DLLs from Microsoft, so it is your call whether you

@@ -58,13 +58,15 @@ apply_wine_fixes() {
     # (c) MilkDrop 2's pixel shaders are compiled by d3dx9, and Wine's built-in
     #     HLSL compiler rejects the sampler_state blocks MilkDrop uses:
     #     "error compiling ps_2.0 warp shader ... unexpected KW_sampler_state".
-    #     nMaxPSVersion=0 drops it to the non-shader path, which works.
+    #     MaxPSVersion=0 drops it to the non-shader path, which works. The key
+    #     is MaxPSVersion, not nMaxPSVersion as the preset keys are named -
+    #     spelt wrong it is silently ignored and the shaders still run.
     mkdir -p "$(dirname "$milk")"
     if [ -f "$milk" ]; then
-        grep -q '^nMaxPSVersion=' "$milk" || \
-            sed -i 's/^\[settings\]/[settings]\nnMaxPSVersion=0/' "$milk"
+        grep -q '^MaxPSVersion=' "$milk" || \
+            sed -i 's/^\[settings\]/[settings]\nMaxPSVersion=0/' "$milk"
     else
-        printf '[settings]\nnMaxPSVersion=0\n' > "$milk"
+        printf '[settings]\nMaxPSVersion=0\n' > "$milk"
     fi
 
     echo "    Output set to WASAPI, MilkDrop shaders off, XVidMode disabled."

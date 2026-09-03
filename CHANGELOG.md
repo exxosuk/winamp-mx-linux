@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.1
+
+- Fixed the MilkDrop setting being written under the wrong name. The key is
+  `MaxPSVersion`; 1.2.0 wrote `nMaxPSVersion`, which MilkDrop ignores silently,
+  so the shader error came back exactly as before
+
+
 ## 1.2.0
 
 - The installer now applies the three Wine fixes itself, instead of leaving
