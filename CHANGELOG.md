@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.14.0
+
+- Fixed MIDI playing silence while the time counted up. Wine hands MIDI to the
+  first sequencer device it finds, which on Debian is "Midi Through"
+  (`snd_seq_dummy`) - a loopback that discards everything. The synthesiser was
+  connected to nothing. Confirmed from the sequencer's own table: Winamp's
+  client wired to Midi Through, TiMidity with no connections at all, and no
+  audio on the sink while direct playback of the same file peaked at 3686
+- The loopback is now blacklisted so the synth is the only MIDI device. It
+  cannot be rewired from outside - `aconnect` answers "Connection failed
+  (Invalid argument)"
+- The synthesiser is started from the user's autostart rather than the
+  packaged daemon, which runs as a system user and cannot reach a per-session
+  PulseAudio - the reason `service timidity start` kept failing
+
+
 ## 1.13.0
 
 - Fixed Winamp copies piling up, one per file opened. Opening a file starts a

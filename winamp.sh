@@ -191,6 +191,35 @@ do_install() {
         fi
     fi
 
+    echo "==> Making sure MIDI reaches the synthesiser..."
+    # Wine hands MIDI to the first sequencer device it finds, and on Debian
+    # that is "Midi Through" (snd_seq_dummy) - a loopback that discards
+    # everything. The synth sits behind it and never gets a note: Winamp shows
+    # the time counting up and plays silence. Nothing can rewire it from
+    # outside either; aconnect answers "Connection failed (Invalid argument)".
+    # Removing the loopback leaves the synth as the only MIDI device.
+    if [ ! -f /etc/modprobe.d/winamp-midi-through.conf ]; then
+        echo "blacklist snd_seq_dummy" | \
+            sudo tee /etc/modprobe.d/winamp-midi-through.conf >/dev/null
+        sudo rmmod snd_seq_dummy 2>/dev/null || \
+            echo "    (Midi Through is in use; it will be gone after a reboot)"
+    fi
+
+    # The packaged timidity daemon runs as a system user and cannot reach a
+    # per-session PulseAudio, which is why it fails to start on a desktop.
+    # Run the synth as the logged-in user instead.
+    mkdir -p "$HOME/.config/autostart"
+    cat > "$HOME/.config/autostart/timidity-synth.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=TiMidity MIDI synthesiser
+Comment=ALSA sequencer synth for Winamp MIDI, run as the logged-in user because PulseAudio is per-session
+Exec=timidity -iA -Os -B4,12
+Terminal=false
+X-GNOME-Autostart-enabled=true
+NoDisplay=true
+EOF
+
     echo "==> Setting up a dedicated 32-bit Wine prefix at $WINE_PREFIX..."
     export WINEPREFIX="$WINE_PREFIX"
     export WINEARCH=win32
