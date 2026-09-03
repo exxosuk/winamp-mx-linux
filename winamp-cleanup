@@ -36,5 +36,15 @@ for pid in $(ps -eo pid,stat,comm | awk '$3=="winamp.exe"{print $1":"$2}'); do
     esac
 done
 
+# A wedged winamp.exe stays registered with wineserver, and the next Winamp
+# spends about twenty seconds waiting on it before starting - measured at 21s
+# with corpses present against 2s after the session is reset. Resetting the
+# wine session unregisters them; the corpses themselves remain (nothing can
+# remove those short of a reboot) but nothing waits on them any more.
+if ps -eo stat,comm | awk '$2=="winamp.exe" && $1 ~ /Z/' | grep -q .; then
+    WINEPREFIX="@WINE_PREFIX@" timeout 20 wineserver -k >/dev/null 2>&1
+    sleep 2
+fi
+
 [ "$kill_live" = 1 ] && sleep 2
 echo "winamp-cleanup: $live running, $zombies unkillable (they clear on reboot)"

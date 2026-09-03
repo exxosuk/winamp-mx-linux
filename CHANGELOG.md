@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.15.0
+
+- Winamp started in about twenty seconds; it now takes two to four. The delay
+  was not Winamp: a wedged `winamp.exe` stays registered with wineserver, and
+  the next launch waits on it before giving up. Measured 21s with corpses
+  present against 2s after resetting the wine session, and the same 21s with
+  drive probing removed, with every `gen_*` plugin disabled, and with every
+  `ml_*` plugin disabled - none of which made any difference
+- This is also why the taskbar icon appeared, vanished, and came back twenty
+  seconds later
+- `winamp-cleanup` now resets the wine session when corpses are present. The
+  corpses themselves still need a reboot; nothing waits on them meanwhile
+
+
 ## 1.14.0
 
 - Fixed MIDI playing silence while the time counted up. Wine hands MIDI to the
