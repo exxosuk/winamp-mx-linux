@@ -59,6 +59,9 @@ that Winamp was still running and that no error dialog had appeared:
   apart differed by 55,352 pixels, so it is not a frozen frame)
 * audio through WASAPI - confirmed working
 * the playlist survives a restart - 12,895 entries reloaded
+* MIDI playback, after installing the synthesiser: Wine's "no software
+  synthesizer" error is gone and TiMidity reports `Connected From: 130:0` while
+  Winamp plays a `.mid`
 
 Not covered: the modal dialogs (Preferences, Open File, Jump To File, File
 Info). They could not be driven reliably from a script under Wine, so they are
@@ -163,14 +166,24 @@ Wine has no synthesiser to hand them to:
     err:winediag:MIDIMAP_drvOpen No software synthesizer midi port found,
     Midi sound output probably won't work.
 
-The installer now handles this: it installs `timidity` and `timidity-daemon`,
-which publish ALSA sequencer ports at boot for Wine to find. To do it by hand:
+The installer handles this, and there is a trap in it worth knowing about.
+`timidity` only *Recommends* a soundfont, and MX ships with
+`APT::Install-Recommends "0"`, so installing TiMidity on MX gets you a
+synthesiser whose config points at `/etc/timidity/fluidr3_gm.cfg` - a file that
+was never installed. TiMidity then exits with "Error reading configuration
+file" and never publishes a port, so nothing has changed from Wine's point of
+view. By hand:
 
-    sudo apt install timidity timidity-daemon
+    sudo apt install timidity timidity-daemon timgm6mb-soundfont
+    sudo sed -i 's|fluidr3_gm.cfg|timgm6mb.cfg|' /etc/timidity/timidity.cfg
+    sudo service timidity start
 
-Check it worked with `aconnect -l` - you should see a TiMidity client listed
-alongside `System` and `Midi Through`. Everything else in that extension list
-is unaffected.
+Check it with `aconnect -l`: a `TiMidity` client should appear alongside
+`System` and `Midi Through`. **Then restart Winamp** - Wine enumerates MIDI
+devices once when a process starts, so a Winamp that was already running will
+not see a synth that appeared afterwards.
+
+Everything else in Winamp's extension list is unaffected.
 
 ### The visualisation judders
 

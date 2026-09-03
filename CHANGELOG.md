@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.8.0
+
+- MIDI playback confirmed working end to end: Wine's "no software synthesizer"
+  error is gone and TiMidity shows the connection from Winamp while a `.mid`
+  plays
+- The installer now installs a soundfont explicitly and repairs TiMidity's
+  config if it points at one that is not present. On MX this is not optional:
+  `timidity` only Recommends a soundfont and MX sets
+  `APT::Install-Recommends "0"`, so TiMidity would install and then refuse to
+  start, with nothing to say why unless you ran it by hand
+- Every external tool the script uses is now checked for and installed if
+  missing - curl, file, icoutils, desktop-file-utils, alsa-utils - rather than
+  assumed to be present
+- The installer reports whether the synthesiser actually came up, instead of
+  assuming the install worked
+
+
 ## 1.7.0
 
 - The installer now installs `timidity` and `timidity-daemon` if no MIDI

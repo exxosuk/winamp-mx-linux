@@ -113,9 +113,24 @@ do_install() {
         echo "    Found: $(wine --version)"
     fi
 
-    echo "==> Checking for icoutils (needed to pull the icon out of the installer)..."
-    if ! command -v wrestool >/dev/null 2>&1; then
-        sudo apt install -y icoutils
+    echo "==> Checking the tools this script needs..."
+    # Everything below is used further down. MX installs no Recommends
+    # (APT::Install-Recommends "0"), so nothing can be assumed to arrive as a
+    # side effect of another package - each one is checked for by hand.
+    missing=""
+    command -v curl                    >/dev/null 2>&1 || missing="$missing curl"
+    command -v file                    >/dev/null 2>&1 || missing="$missing file"
+    command -v wrestool                >/dev/null 2>&1 || missing="$missing icoutils"
+    command -v icotool                 >/dev/null 2>&1 || missing="$missing icoutils"
+    command -v update-desktop-database >/dev/null 2>&1 || missing="$missing desktop-file-utils"
+    command -v aconnect                >/dev/null 2>&1 || missing="$missing alsa-utils"
+    missing=$(printf '%s\n' $missing | sort -u | tr '\n' ' ')
+    if [ -n "${missing// /}" ]; then
+        echo "    Installing:$missing"
+        # shellcheck disable=SC2086
+        sudo apt install -y $missing
+    else
+        echo "    All present."
     fi
 
     echo "==> Checking for a MIDI synthesiser..."
@@ -124,12 +139,35 @@ do_install() {
     # and .MID/.KAR/.RMI files - which Winamp lists among the types it handles -
     # play silently. timidity-daemon publishes ALSA sequencer ports at boot,
     # which is what Wine looks for.
-    if command -v aconnect >/dev/null 2>&1 && \
-       aconnect -l 2>/dev/null | grep -qiE "timidity|fluid"; then
+    if aconnect -l 2>/dev/null | grep -qiE "timidity|fluid"; then
         echo "    Found one already."
     else
         echo "    None found - installing TiMidity (you may be asked for your password)..."
-        sudo apt install -y timidity timidity-daemon
+        # timidity only *Recommends* a soundfont, and MX installs no
+        # Recommends, so the soundfont has to be named explicitly or TiMidity
+        # ends up with a config pointing at a file that was never installed.
+        # timgm6mb is 6 MB against fluid-soundfont-gm's ~140 MB and works.
+        sudo apt install -y timidity timidity-daemon timgm6mb-soundfont
+
+        # Repair the shipped config if it references a soundfont that is not
+        # here. Without this TiMidity exits with "Error reading configuration
+        # file" and never publishes a port for Wine to find.
+        if [ ! -f /etc/timidity/fluidr3_gm.cfg ] && [ -f /etc/timidity/timgm6mb.cfg ] \
+           && grep -q '^source /etc/timidity/fluidr3_gm.cfg' /etc/timidity/timidity.cfg 2>/dev/null; then
+            echo "    Pointing TiMidity at the soundfont that is actually installed..."
+            sudo cp /etc/timidity/timidity.cfg /etc/timidity/timidity.cfg.pre-winamp
+            sudo sed -i 's|^source /etc/timidity/fluidr3_gm.cfg|source /etc/timidity/timgm6mb.cfg|' \
+                /etc/timidity/timidity.cfg
+        fi
+
+        sudo service timidity restart >/dev/null 2>&1 || true
+        sleep 2
+        if aconnect -l 2>/dev/null | grep -qi timidity; then
+            echo "    MIDI synthesiser is up."
+        else
+            echo "    WARNING: TiMidity did not start. MIDI files will not play;"
+            echo "    everything else is unaffected. Try: sudo service timidity start"
+        fi
     fi
 
     echo "==> Setting up a dedicated 32-bit Wine prefix at $WINE_PREFIX..."
