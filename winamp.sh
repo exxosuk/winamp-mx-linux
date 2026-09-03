@@ -118,6 +118,20 @@ do_install() {
         sudo apt install -y icoutils
     fi
 
+    echo "==> Checking for a MIDI synthesiser..."
+    # Wine has no synthesiser of its own. Without one it says at startup:
+    #   err:winediag:MIDIMAP_drvOpen No software synthesizer midi port found
+    # and .MID/.KAR/.RMI files - which Winamp lists among the types it handles -
+    # play silently. timidity-daemon publishes ALSA sequencer ports at boot,
+    # which is what Wine looks for.
+    if command -v aconnect >/dev/null 2>&1 && \
+       aconnect -l 2>/dev/null | grep -qiE "timidity|fluid"; then
+        echo "    Found one already."
+    else
+        echo "    None found - installing TiMidity (you may be asked for your password)..."
+        sudo apt install -y timidity timidity-daemon
+    fi
+
     echo "==> Setting up a dedicated 32-bit Wine prefix at $WINE_PREFIX..."
     export WINEPREFIX="$WINE_PREFIX"
     export WINEARCH=win32

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.7.0
+
+- The installer now installs `timidity` and `timidity-daemon` if no MIDI
+  synthesiser is present, so `.MID`, `.KAR` and `.RMI` files play instead of
+  failing silently. Not yet verified end to end on the development machine -
+  installing packages needs root, which the test run did not have
+- README explains why "Jump To File" is fast on Windows and slow under Wine
+  (NTFS's case-insensitive index versus Wine enumerating the directory), and
+  records the fixes that were tried and measured as ineffective: the `.ciopfs`
+  marker and shorter filenames
+
+
 ## 1.6.0
 
 - MilkDrop 2 is now renamed out of the way at install time rather than left in

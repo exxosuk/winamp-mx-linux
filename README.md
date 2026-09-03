@@ -68,8 +68,13 @@ untested rather than known-good.
 
 ### "Jump To File" takes seconds per keypress
 
-Wine's `FindFirstFile` reads the whole directory even when asked for one exact
-filename, and Winamp checks every playlist entry as you type. The cost is
+This is much faster on Windows with the same Winamp, and the reason is not that
+Linux is slower. NTFS keeps filenames in a case-insensitive B-tree index, so
+looking one up is a single indexed seek. The filesystem under Wine is
+case-*sensitive*, so to honour Windows' case-insensitive semantics Wine has to
+read the entire directory and compare every entry - O(log n) becomes O(n), for
+each lookup. Winamp checks every playlist entry as you type, so the cost lands
+on every keystroke. The cost is
 linear in how many files sit in the folder your music is in - measured under
 Wine 9.21, one enumeration of a folder costs about 0.1 ms per file in it:
 
@@ -82,10 +87,14 @@ up to seconds per keystroke. Splitting the music into subfolders (by artist, or
 even just A-Z) is what fixes it - twenty-five folders of forty files each
 enumerate about twenty-five times faster than one folder of a thousand.
 
-Things that are *not* the cause, in case they look like obvious suspects: the
+Things that are *not* the cause, all measured rather than assumed: the
 filesystem (an ext4 folder of the same size measured the same as NTFS via
-ntfs-3g), and the length of the path (mapping a drive letter straight at the
-music folder made no measurable difference).
+ntfs-3g); the length of the path (a drive letter mapped straight at the music
+folder made no difference); a `.ciopfs` marker, which Wine probes for to detect
+a case-insensitive filesystem (1.36s vs 1.30s - noise); and long filenames
+forcing 8.3 short-name generation (1.37s for short names against 1.56s for very
+long ones, so at most 14%). What is left is the enumeration itself, about
+110 microseconds per file in the folder.
 
 ### Audio stutters when a menu opens
 
@@ -154,9 +163,14 @@ Wine has no synthesiser to hand them to:
     err:winediag:MIDIMAP_drvOpen No software synthesizer midi port found,
     Midi sound output probably won't work.
 
-Installing one (`sudo apt install fluidsynth fluid-soundfont-gm`, or timidity)
-gives Wine something to play them through. Everything else in that extension
-list is unaffected.
+The installer now handles this: it installs `timidity` and `timidity-daemon`,
+which publish ALSA sequencer ports at boot for Wine to find. To do it by hand:
+
+    sudo apt install timidity timidity-daemon
+
+Check it worked with `aconnect -l` - you should see a TiMidity client listed
+alongside `System` and `Midi Through`. Everything else in that extension list
+is unaffected.
 
 ### The visualisation judders
 
