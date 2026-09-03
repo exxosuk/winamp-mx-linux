@@ -113,6 +113,18 @@ extension off:
 
 ### Visualisation
 
+The two visualisers Winamp ships are not equally portable, and the difference
+is what they render with:
+
+| | renderer | works under Wine |
+|---|---|---|
+| **AVS** | software - draws into a pixel buffer on the CPU and blits it | yes |
+| **MilkDrop 2** | Direct3D 9 with HLSL pixel shaders compiled by `d3dx9` | no |
+
+Counting the imports in the two DLLs makes the point: `vis_avs.dll` mentions
+`d3d9` not once, `vis_milk2.dll` mentions `d3dx9` thirteen times.
+
+
 MilkDrop 2 does not work under Wine's built-in `d3dx9`, whichever way you point
 it. With its pixel shaders on it cannot compile them:
 
@@ -122,10 +134,11 @@ and with `MaxPSVersion=0` under `[settings]` in `Plugins/Milkdrop2/milk2.ini` it
 stops erroring but never draws anything - you get whatever was on the desktop
 behind its window - and then puts up "plug-in executed an illegal operation".
 
-So the installer selects **AVS** instead, which Winamp ships in the same folder
-and which needs no shaders. Tested here: it opens, renders, and animates.
+So the installer selects **AVS**, and also renames `vis_milk2.dll` to
+`vis_milk2.dll.disabled` so MilkDrop does not sit in Preferences > Plug-ins
+waiting to be picked. Nothing is deleted - rename it back to restore it.
 
-MilkDrop is still installed if you want to chase it. The fix is Microsoft's own
+If you want MilkDrop working rather than hidden, the fix is Microsoft's own
 d3dx9 in place of Wine's:
 
     WINEPREFIX=~/.wine-winamp winetricks d3dx9

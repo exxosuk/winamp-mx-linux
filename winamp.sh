@@ -91,6 +91,14 @@ apply_wine_fixes() {
         printf 'visplugin_name=vis_avs.dll\n' >> "$ini"
     fi
 
+    #     Selecting AVS is not enough on its own: MilkDrop still appears in
+    #     Preferences > Plug-ins, and picking it there gets you the corruption
+    #     and the "illegal operation" box. Winamp finds visualisers by scanning
+    #     Plugins/vis_*.dll, so renaming it takes it out of the list without
+    #     deleting anything. Rename it back to re-enable it.
+    local milkdll="$WINE_PREFIX/drive_c/Program Files/Winamp/Plugins/vis_milk2.dll"
+    [ -f "$milkdll" ] && mv "$milkdll" "$milkdll.disabled"
+
     echo "    Output set to WASAPI, visualiser set to AVS, XVidMode disabled."
 }
 

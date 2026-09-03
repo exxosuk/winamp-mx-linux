@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.0
+
+- MilkDrop 2 is now renamed out of the way at install time rather than left in
+  the plug-in list to be picked by accident. It cannot work under Wine: it
+  renders through Direct3D 9 and compiles HLSL shaders with `d3dx9`, where AVS
+  draws in software and needs no GPU API at all. Nothing is deleted - rename
+  `vis_milk2.dll.disabled` back to restore it
+- README explains the difference between the two visualisers
+
+
 ## 1.5.0
 
 - The Winamp installer is now kept in the repository, because the classic
