@@ -94,23 +94,27 @@ extension off:
     WINEPREFIX=~/.wine-winamp wine reg add "HKCU\Software\Wine\X11 Driver" \
         /v UseXVidMode /t REG_SZ /d N /f
 
-### Visualisation fails with a shader compile error
+### Visualisation
+
+MilkDrop 2 does not work under Wine's built-in `d3dx9`, whichever way you point
+it. With its pixel shaders on it cannot compile them:
 
     error compiling ps_2.0 warp shader: syntax error, unexpected KW_sampler_state
 
-MilkDrop 2's pixel shaders are compiled by `d3dx9`, and Wine's built-in HLSL
-compiler does not understand the `sampler_state` blocks MilkDrop uses. Either:
+and with `MaxPSVersion=0` under `[settings]` in `Plugins/Milkdrop2/milk2.ini` it
+stops erroring but never draws anything - you get whatever was on the desktop
+behind its window - and then puts up "plug-in executed an illegal operation".
 
-* turn the shaders off - `MaxPSVersion=0` under `[settings]` in
-  `Plugins/Milkdrop2/milk2.ini` inside the Wine prefix, which drops MilkDrop
-  back to its non-shader rendering and works. The installer does this for you.
-  Mind the spelling: it is `MaxPSVersion`, with no `n` in front - MilkDrop's
-  *preset* keys are named `nSomething`, its own settings are not, and the wrong
-  spelling is ignored without any complaint; or
-* install Microsoft's own d3dx9 into the prefix with
-  `WINEPREFIX=~/.wine-winamp winetricks d3dx9`, which keeps the shaders. This
-  pulls in redistributable DLLs from Microsoft, so it is your call whether you
-  want them.
+So the installer selects **AVS** instead, which Winamp ships in the same folder
+and which needs no shaders. Tested here: it opens, renders, and animates.
+
+MilkDrop is still installed if you want to chase it. The fix is Microsoft's own
+d3dx9 in place of Wine's:
+
+    WINEPREFIX=~/.wine-winamp winetricks d3dx9
+
+then set `visplugin_name=vis_milk2.dll` back in `winamp.ini`. That pulls
+redistributable DLLs from Microsoft, so whether you want them is your call.
 
 ## Notes
 

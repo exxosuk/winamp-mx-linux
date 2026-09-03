@@ -37,7 +37,6 @@ apply_wine_fixes() {
     local winamp_exe="$1"
     local appdata="$WINE_PREFIX/drive_c/users/$USER/AppData/Roaming/Winamp"
     local ini="$appdata/winamp.ini"
-    local milk="$appdata/Plugins/Milkdrop2/milk2.ini"
 
     # (a) Wine's X11 driver asserts and kills explorer.exe while enumerating
     #     video modes, which leaves Winamp started but with no window at all:
@@ -55,21 +54,22 @@ apply_wine_fixes() {
         printf '[Winamp]\noutname=out_wasapi.dll\n' > "$ini"
     fi
 
-    # (c) MilkDrop 2's pixel shaders are compiled by d3dx9, and Wine's built-in
-    #     HLSL compiler rejects the sampler_state blocks MilkDrop uses:
+    # (c) MilkDrop 2 does not work under Wine's built-in d3dx9, whichever way
+    #     you point it. With shaders on it fails to compile them:
     #     "error compiling ps_2.0 warp shader ... unexpected KW_sampler_state".
-    #     MaxPSVersion=0 drops it to the non-shader path, which works. The key
-    #     is MaxPSVersion, not nMaxPSVersion as the preset keys are named -
-    #     spelt wrong it is silently ignored and the shaders still run.
-    mkdir -p "$(dirname "$milk")"
-    if [ -f "$milk" ]; then
-        grep -q '^MaxPSVersion=' "$milk" || \
-            sed -i 's/^\[settings\]/[settings]\nMaxPSVersion=0/' "$milk"
+    #     With MaxPSVersion=0 it stops erroring but never draws - you get the
+    #     leftover desktop pixels in its window - and then faults with
+    #     "plug-in executed an illegal operation". So select AVS instead, which
+    #     needs no shaders and was tested rendering and animating here. MilkDrop
+    #     stays installed; see README.md for how to get it going with native
+    #     d3dx9 if you want it.
+    if grep -q '^visplugin_name=' "$ini" 2>/dev/null; then
+        sed -i 's/^visplugin_name=.*/visplugin_name=vis_avs.dll/' "$ini"
     else
-        printf '[settings]\nMaxPSVersion=0\n' > "$milk"
+        printf 'visplugin_name=vis_avs.dll\n' >> "$ini"
     fi
 
-    echo "    Output set to WASAPI, MilkDrop shaders off, XVidMode disabled."
+    echo "    Output set to WASAPI, visualiser set to AVS, XVidMode disabled."
 }
 
 do_install() {

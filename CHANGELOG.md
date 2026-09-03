@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0
+
+- The installer now selects the AVS visualiser rather than MilkDrop 2. MilkDrop
+  does not work under Wine's built-in d3dx9 either way round: with shaders it
+  fails to compile them, and with `MaxPSVersion=0` it draws nothing and then
+  faults. AVS needs no shaders, and was tested opening, rendering and animating
+- README records what MilkDrop actually does under Wine, and how to get it
+  working with native d3dx9 if you want it
+
+
 ## 1.2.1
 
 - Fixed the MilkDrop setting being written under the wrong name. The key is
