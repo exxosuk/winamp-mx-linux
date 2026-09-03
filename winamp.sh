@@ -247,6 +247,18 @@ do_install() {
     echo "==> Applying the fixes this install needs under Wine..."
     apply_wine_fixes "$WINAMP_EXE"
 
+    echo "==> Installing the launcher helpers..."
+    # winamp-launch starts Winamp, or hands a file to the copy already
+    # running. winamp-cleanup clears dead Winamps out of the way.
+    mkdir -p "$BIN_DIR"
+    for helper in winamp-launch winamp-cleanup; do
+        if [ -f "$(dirname "$0")/$helper" ]; then
+            sed "s|@WINAMP_EXE@|$WINAMP_EXE|g; s|@WINE_PREFIX@|$WINE_PREFIX|g" \
+                "$(dirname "$0")/$helper" > "$BIN_DIR/$helper"
+            chmod +x "$BIN_DIR/$helper"
+        fi
+    done
+
     echo "==> Creating the launcher..."
     mkdir -p "$APPS_DIR"
     cat > "$LAUNCHER" <<EOF
@@ -254,7 +266,7 @@ do_install() {
 Type=Application
 Name=Winamp
 Comment=It really whips the llama's ass
-Exec=env WINEPREFIX="$WINE_PREFIX" WINEDLLOVERRIDES="winealsa.drv=d" wine "$WINAMP_EXE"
+Exec=$BIN_DIR/winamp-launch %f
 Icon=$ICON_PATH
 Terminal=false
 Categories=AudioVideo;Audio;Player;
@@ -270,7 +282,7 @@ EOF
 Type=Application
 Name=Winamp (no MIDI)
 Comment=Winamp without MIDI - closes cleanly, leaving no background process
-Exec=env WINEPREFIX="$WINE_PREFIX" WINEDLLOVERRIDES="winealsa.drv=d" wine "$WINAMP_EXE" %f
+Exec=env WINAMP_NO_MIDI=1 $BIN_DIR/winamp-launch %f
 Icon=$ICON_PATH
 Terminal=false
 Categories=AudioVideo;Audio;Player;
@@ -303,6 +315,7 @@ do_uninstall() {
     rm -rf "$WINE_PREFIX"
     rm -f "$LAUNCHER"
     rm -f "$APPS_DIR/winamp-nomidi.desktop"
+    rm -f "$BIN_DIR/winamp-launch" "$BIN_DIR/winamp-cleanup"
     rm -f "$DESKTOP_DIR/winamp.desktop"
     rm -rf "$ICON_DIR"
     update-desktop-database "$APPS_DIR" >/dev/null 2>&1 || true

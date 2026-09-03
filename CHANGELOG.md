@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.13.0
+
+- Fixed Winamp copies piling up, one per file opened. Opening a file starts a
+  second `winamp.exe` that passes the name to the running instance and should
+  then exit - but it had loaded `winealsa.drv` on the way in, wedged a thread
+  in the kernel's ALSA sequencer, and could never exit. The launcher now hands
+  files over with the driver disabled, since a hand-off has no use for MIDI,
+  and cleans the messenger up afterwards. Measured: opening three files in a
+  row now leaves one running Winamp and creates no new zombies, where before
+  it left four processes that could not be killed
+- Added `winamp-cleanup`, which clears the windows of dead Winamps. Those
+  windows stay on screen looking like running copies, and are still registered
+  with wineserver, so Winamp's "is one already running?" check can find a
+  corpse. The launcher runs it before every start; `winamp-cleanup --all` also
+  closes the running copies
+- Neither can remove the zombies themselves. A thread in uninterruptible sleep
+  ignores SIGKILL, and the stale sequencer connections cannot be released from
+  userspace either - `aconnect -d` answers "No subscription is found". Only a
+  reboot clears them
+
+
 ## 1.12.0
 
 - MIDI is on by default again. 1.10.0 and 1.11.0 disabled Wine's MIDI driver

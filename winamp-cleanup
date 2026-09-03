@@ -1,0 +1,40 @@
+#!/bin/sh
+# Clear out dead Winamps.
+#
+# Wine loads winealsa.drv for MIDI and one thread then wedges in the kernel's
+# ALSA sequencer, in uninterruptible sleep, where SIGKILL cannot reach it. The
+# process becomes a zombie that no amount of terminating will remove - only a
+# reboot clears those. What CAN be cleared is everything around them: their
+# windows, which stay on screen looking like running copies, and which are
+# still registered with wineserver, so Winamp's "is there already an instance?"
+# check finds a corpse and hands it the file you dropped. That is why dragging
+# onto Winamp appears to do nothing, or starts yet another copy.
+#
+#   winamp-cleanup           remove ghost windows, leave running copies alone
+#   winamp-cleanup --all     also close the running copies
+
+kill_live=0
+[ "$1" = "--all" ] && kill_live=1
+
+ghosts=0; live=0; zombies=0
+
+# Windows whose owning process is gone or a zombie.
+wmctrl -lp 2>/dev/null | grep -i winamp | while read -r win _ pid _; do
+    state=$(ps -o stat= -p "$pid" 2>/dev/null | tr -d ' ')
+    case "$state" in
+        Z*|"") xdotool windowkill "$win" 2>/dev/null ;;
+        *)     [ "$kill_live" = 1 ] && xdotool windowkill "$win" 2>/dev/null ;;
+    esac
+done
+
+for pid in $(ps -eo pid,stat,comm | awk '$3=="winamp.exe"{print $1":"$2}'); do
+    p=${pid%%:*}; s=${pid##*:}
+    case "$s" in
+        Z*) zombies=$((zombies + 1)) ;;
+        *)  live=$((live + 1))
+            [ "$kill_live" = 1 ] && kill "$p" 2>/dev/null ;;
+    esac
+done
+
+[ "$kill_live" = 1 ] && sleep 2
+echo "winamp-cleanup: $live running, $zombies unkillable (they clear on reboot)"

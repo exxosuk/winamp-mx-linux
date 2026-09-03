@@ -1,0 +1,30 @@
+#!/bin/sh
+# Starting Winamp, or handing a file to the copy already running.
+#
+# Opening a file spawns a second winamp.exe that passes the name to the
+# running instance and then exits - except it cannot exit, because it loaded
+# winealsa.drv on the way in and one of its threads is now wedged in the
+# kernel's ALSA sequencer for good. That is where the pile of un-closable
+# Winamps comes from: one per file opened.
+#
+# A hand-off has no use for MIDI, so it is started with the driver disabled
+# and exits cleanly. Only the first, real instance loads it.
+PREFIX="@WINE_PREFIX@"
+EXE="@WINAMP_EXE@"
+
+"$HOME/.local/bin/winamp-cleanup" >/dev/null 2>&1
+
+running=$(ps -eo stat,comm | awk '$2=="winamp.exe" && $1 !~ /Z/' | wc -l)
+
+if [ "$running" -gt 0 ] && [ $# -gt 0 ]; then
+    # Hand the file over, then make sure the messenger goes away. It has
+    # done its job once the running instance has the name, but it sits
+    # there afterwards, and one per opened file adds up.
+    env WINEPREFIX="$PREFIX" WINEDLLOVERRIDES="winealsa.drv=d" wine "$EXE" /ADD "$@" &
+    handoff=$!
+    sleep 8
+    kill "$handoff" 2>/dev/null
+    exit 0
+fi
+
+exec env WINEPREFIX="$PREFIX" ${WINAMP_NO_MIDI:+WINEDLLOVERRIDES=winealsa.drv=d} wine "$EXE" "$@"
