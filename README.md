@@ -47,6 +47,23 @@ Winamp installs and opens fine but plays nothing, that's the first thing
 to check: run "wine --version" and compare against what's in the Test
 Repo.
 
+## What has been tested
+
+Driven automatically against Wine 9.21 on MX 23, checking after every action
+that Winamp was still running and that no error dialog had appeared:
+
+* play, pause, unpause, stop, next, previous - all fine, track changes confirmed
+  from the window title
+* seek forward and back, volume up and down, shuffle, repeat - all fine
+* AVS visualisation - opens, renders and animates (two captures two seconds
+  apart differed by 55,352 pixels, so it is not a frozen frame)
+* audio through WASAPI - confirmed working
+* the playlist survives a restart - 12,895 entries reloaded
+
+Not covered: the modal dialogs (Preferences, Open File, Jump To File, File
+Info). They could not be driven reliably from a script under Wine, so they are
+untested rather than known-good.
+
 ## Troubleshooting
 
 ### "Jump To File" takes seconds per keypress
@@ -115,6 +132,25 @@ d3dx9 in place of Wine's:
 
 then set `visplugin_name=vis_milk2.dll` back in `winamp.ini`. That pulls
 redistributable DLLs from Microsoft, so whether you want them is your call.
+
+### MIDI files do not play
+
+Winamp lists `.MID`, `.MIDI`, `.RMI` and `.KAR` among the types it handles, but
+Wine has no synthesiser to hand them to:
+
+    err:winediag:MIDIMAP_drvOpen No software synthesizer midi port found,
+    Midi sound output probably won't work.
+
+Installing one (`sudo apt install fluidsynth fluid-soundfont-gm`, or timidity)
+gives Wine something to play them through. Everything else in that extension
+list is unaffected.
+
+### The visualisation judders
+
+AVS renders at its own pace while the compositor presents at the screen's
+refresh rate, and when the two disagree the effects appear to jump. Right-click
+the AVS window > Settings > Display and cap the frame rate at your monitor's
+refresh (60 here) to line them up.
 
 ## Notes
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0
+
+- README records a tested-features sweep: playback controls, seeking, volume,
+  shuffle, repeat and AVS were each exercised and checked for crashes and error
+  dialogs, and what was *not* covered is listed rather than left implied
+- Documented that MIDI files will not play without a software synthesiser
+  installed, which Wine reports at startup
+- Documented the visualisation judder as a frame-pacing mismatch, and where to
+  cap AVS's frame rate to fix it
+
+
 ## 1.3.0
 
 - The installer now selects the AVS visualiser rather than MilkDrop 2. MilkDrop
