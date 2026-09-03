@@ -189,9 +189,10 @@ Measured after the change: Winamp starts in **2 seconds** rather than 21, MIDI
 plays, and there are **no wedged threads** - so nothing is left behind when it
 closes.
 
-A short demo MIDI is installed beside Winamp's own `demo.mp3` and seeded into
-the playlist, so a fresh install can demonstrate MIDI without you finding a
-file first. It was written for this project rather than borrowed, so there is
+A 35-second demo, **midi demo.mid**, is installed beside Winamp's own
+`demo.mp3` and seeded into the playlist, so a fresh install can demonstrate
+MIDI without you finding a file first. Piano, strings, bass and drums, ending
+on a proper cadence rather than stopping mid-bar. It was written for this project rather than borrowed, so there is
 nothing here that is not ours to hand out. An existing playlist is never
 replaced.
 

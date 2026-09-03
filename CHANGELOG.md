@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.1
+
+- The demo is now called **midi demo.mid** and runs 35 seconds instead of 11,
+  with piano, strings, bass and drums. It resolves V-I with the last chord
+  ringing out rather than stopping mid-bar - checked by rendering it and
+  looking at the envelope, which decays 1032, 890, 651, 297, 47, 12, 3
+
+
 ## 2.1.0
 
 - A short demo MIDI is installed beside Winamp's own demo.mp3 and added to the

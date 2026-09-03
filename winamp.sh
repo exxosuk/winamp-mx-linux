@@ -304,9 +304,9 @@ do_install() {
     # short MIDI demo goes in beside it - written for this project, so there is
     # nothing to be redistributed that is not ours to redistribute.
     appdata="$WINE_PREFIX/drive_c/users/$USER/AppData/Roaming/Winamp"
-    if [ -f "$(dirname "$0")/demo.mid" ]; then
+    if [ -f "$(dirname "$0")/midi demo.mid" ]; then
         mkdir -p "$appdata"
-        cp "$(dirname "$0")/demo.mid" "$appdata/demo.mid"
+        cp "$(dirname "$0")/midi demo.mid" "$appdata/midi demo.mid"
         # Only seed the playlist when there isn't one already - nobody wants
         # their playlist replaced by a reinstall.
         if [ ! -s "$appdata/winamp.m3u8" ]; then
