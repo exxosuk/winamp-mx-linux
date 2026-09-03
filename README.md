@@ -47,6 +47,55 @@ Winamp installs and opens fine but plays nothing, that's the first thing
 to check: run "wine --version" and compare against what's in the Test
 Repo.
 
+## Troubleshooting
+
+### "Jump To File" takes seconds per keypress
+
+Wine's `FindFirstFile` reads the whole directory even when asked for one exact
+filename, and Winamp checks every playlist entry as you type. The cost is
+linear in how many files sit in the folder your music is in - measured under
+Wine 9.21, one enumeration of a folder costs about 0.1 ms per file in it:
+
+    50 files      7 ms
+    250 files    27 ms
+    1126 files  121 ms
+
+With a few thousand playlist entries pointing into one large folder, that adds
+up to seconds per keystroke. Splitting the music into subfolders (by artist, or
+even just A-Z) is what fixes it - twenty-five folders of forty files each
+enumerate about twenty-five times faster than one folder of a thousand.
+
+Things that are *not* the cause, in case they look like obvious suspects: the
+filesystem (an ext4 folder of the same size measured the same as NTFS via
+ntfs-3g), and the length of the path (mapping a drive letter straight at the
+music folder made no measurable difference).
+
+### Audio stutters when a menu opens
+
+The installer leaves Winamp on its DirectSound output plugin, which under Wine
+shares badly with the UI thread. Two things to try, in order:
+
+1. Preferences (Ctrl+P) > Plug-ins > Output > Nullsoft DirectSound Output >
+   Configure, and raise the buffer length.
+2. Switch the output plugin to `out_wasapi.dll` in the same dialog. It is
+   already installed - Winamp ships it - and it goes through Wine's newer
+   audio path.
+
+### Visualisation fails with a shader compile error
+
+    error compiling ps_2.0 warp shader: syntax error, unexpected KW_sampler_state
+
+MilkDrop 2's pixel shaders are compiled by `d3dx9`, and Wine's built-in HLSL
+compiler does not understand the `sampler_state` blocks MilkDrop uses. Either:
+
+* turn the shaders off - add `nMaxPSVersion=0` under `[settings]` in
+  `Plugins/Milkdrop2/milk2.ini` inside the Wine prefix, which drops MilkDrop
+  back to its non-shader rendering and works; or
+* install Microsoft's own d3dx9 into the prefix with
+  `WINEPREFIX=~/.wine-winamp winetricks d3dx9`, which keeps the shaders. This
+  pulls in redistributable DLLs from Microsoft, so it is your call whether you
+  want them.
+
 ## Notes
 
 - The classic desktop installer is no longer easy to find by clicking
