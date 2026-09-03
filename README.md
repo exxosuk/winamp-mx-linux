@@ -72,14 +72,27 @@ music folder made no measurable difference).
 
 ### Audio stutters when a menu opens
 
-The installer leaves Winamp on its DirectSound output plugin, which under Wine
-shares badly with the UI thread. Two things to try, in order:
+DirectSound output shares badly with the UI thread under Wine, so opening a
+menu interrupts the sound. The installer now selects `out_wasapi.dll` instead,
+which does not have the problem.
 
-1. Preferences (Ctrl+P) > Plug-ins > Output > Nullsoft DirectSound Output >
-   Configure, and raise the buffer length.
-2. Switch the output plugin to `out_wasapi.dll` in the same dialog. It is
-   already installed - Winamp ships it - and it goes through Wine's newer
-   audio path.
+If you still get stutter, the plugin to move to is `out_wave.dll`: it is the
+only one of the three with a buffer setting you can raise (Preferences >
+Plug-ins > Output > Configure). WASAPI deliberately has no buffer control - the
+DLL carries no such setting at all - so there is nothing to turn up there.
+
+### Winamp starts but no window ever appears
+
+    xvidmode.c:164: xf86vm_free_modes: Assertion `modes[0].dmDriverExtra ==
+    sizeof(XF86VidModeModeInfo *)' failed.
+
+Wine's X11 driver asserts while enumerating video modes and takes `explorer.exe`
+down with it, which leaves `winamp.exe` running with nothing on screen. A media
+player has no business changing the screen mode, so the installer turns the
+extension off:
+
+    WINEPREFIX=~/.wine-winamp wine reg add "HKCU\Software\Wine\X11 Driver" \
+        /v UseXVidMode /t REG_SZ /d N /f
 
 ### Visualisation fails with a shader compile error
 
@@ -88,9 +101,9 @@ shares badly with the UI thread. Two things to try, in order:
 MilkDrop 2's pixel shaders are compiled by `d3dx9`, and Wine's built-in HLSL
 compiler does not understand the `sampler_state` blocks MilkDrop uses. Either:
 
-* turn the shaders off - add `nMaxPSVersion=0` under `[settings]` in
+* turn the shaders off - `nMaxPSVersion=0` under `[settings]` in
   `Plugins/Milkdrop2/milk2.ini` inside the Wine prefix, which drops MilkDrop
-  back to its non-shader rendering and works; or
+  back to its non-shader rendering and works. The installer does this for you; or
 * install Microsoft's own d3dx9 into the prefix with
   `WINEPREFIX=~/.wine-winamp winetricks d3dx9`, which keeps the shaders. This
   pulls in redistributable DLLs from Microsoft, so it is your call whether you

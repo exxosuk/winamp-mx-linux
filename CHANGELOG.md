@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.0
+
+- The installer now applies the three Wine fixes itself, instead of leaving
+  them written up in the README for you to do by hand:
+  - output plugin set to `out_wasapi.dll`, which does not stutter when a menu
+    opens the way DirectSound does
+  - `nMaxPSVersion=0` for MilkDrop 2, so the visualisation stops failing on a
+    shader Wine cannot compile
+  - `UseXVidMode=N`, because Wine's X11 driver asserts while enumerating video
+    modes and takes `explorer.exe` with it, leaving Winamp running with no
+    window on screen
+- README documents the no-window crash, and records that WASAPI has no buffer
+  setting to raise - `out_wave.dll` is the plugin that has one
+
+
 ## 1.1.0
 
 - Added a Troubleshooting section to the README covering three problems found

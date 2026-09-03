@@ -31,6 +31,45 @@ usage() {
     exit 1
 }
 
+apply_wine_fixes() {
+    # Three things Winamp needs changed to behave under Wine. Each one was
+    # found the hard way on MX 23 with Wine 9.21; see README.md for the detail.
+    local winamp_exe="$1"
+    local appdata="$WINE_PREFIX/drive_c/users/$USER/AppData/Roaming/Winamp"
+    local ini="$appdata/winamp.ini"
+    local milk="$appdata/Plugins/Milkdrop2/milk2.ini"
+
+    # (a) Wine's X11 driver asserts and kills explorer.exe while enumerating
+    #     video modes, which leaves Winamp started but with no window at all:
+    #     xvidmode.c:164: xf86vm_free_modes: Assertion failed. A media player
+    #     has no need to change the screen mode, so turn the extension off.
+    WINEPREFIX="$WINE_PREFIX" wine reg add "HKCU\\Software\\Wine\\X11 Driver" \
+        /v UseXVidMode /t REG_SZ /d N /f >/dev/null 2>&1 || true
+
+    # (b) DirectSound output stutters whenever a menu opens, because it shares
+    #     badly with the UI thread under Wine. WASAPI does not.
+    if [ -f "$ini" ]; then
+        sed -i 's/^outname=.*/outname=out_wasapi.dll/' "$ini"
+    else
+        mkdir -p "$appdata"
+        printf '[Winamp]\noutname=out_wasapi.dll\n' > "$ini"
+    fi
+
+    # (c) MilkDrop 2's pixel shaders are compiled by d3dx9, and Wine's built-in
+    #     HLSL compiler rejects the sampler_state blocks MilkDrop uses:
+    #     "error compiling ps_2.0 warp shader ... unexpected KW_sampler_state".
+    #     nMaxPSVersion=0 drops it to the non-shader path, which works.
+    mkdir -p "$(dirname "$milk")"
+    if [ -f "$milk" ]; then
+        grep -q '^nMaxPSVersion=' "$milk" || \
+            sed -i 's/^\[settings\]/[settings]\nnMaxPSVersion=0/' "$milk"
+    else
+        printf '[settings]\nnMaxPSVersion=0\n' > "$milk"
+    fi
+
+    echo "    Output set to WASAPI, MilkDrop shaders off, XVidMode disabled."
+}
+
 do_install() {
     echo "==> Checking for Wine..."
     if ! command -v wine >/dev/null 2>&1; then
@@ -96,6 +135,9 @@ do_install() {
     fi
     ICON_PNG=$(find "$ICON_DIR" -name "*.png" 2>/dev/null | head -n1)
     ICON_PATH="${ICON_PNG:-$ICON_DIR/winamp.ico}"
+
+    echo "==> Applying the fixes this install needs under Wine..."
+    apply_wine_fixes "$WINAMP_EXE"
 
     echo "==> Creating the launcher..."
     mkdir -p "$APPS_DIR"
