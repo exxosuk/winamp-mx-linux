@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.10.0
+
+- The winealsa.drv workaround moved from the launcher into the Wine prefix
+  registry. On the launcher it only covered starting Winamp from the menu or
+  the desktop icon; "Open With" from a file manager sets `WINEPREFIX` and
+  nothing else, so it still wedged a thread and still could not be closed.
+  Measured with no environment variable set at all: one stuck thread before
+  the registry change, none after
+- Winamp's crash handler is disabled. It mails its report to bug@winamp.com
+  through the default mail client, which under Wine appears as a mail account
+  setup dialog out of nowhere
+- Added a second menu entry, "Winamp (MIDI enabled)", for when MIDI matters
+  more than a clean exit
+
+
 ## 1.9.0
 
 - Found and worked around the lock-up where Winamp would not close and could

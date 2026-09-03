@@ -67,7 +67,28 @@ apply_wine_fixes() {
     WINEPREFIX="$WINE_PREFIX" wine reg add "HKCU\\Software\\Wine\\X11 Driver" \
         /v UseXVidMode /t REG_SZ /d N /f >/dev/null 2>&1 || true
 
-    # (b) DirectSound output stutters whenever a menu opens, because it shares
+    # (b1) winealsa.drv is loaded solely for MIDI - audio goes through
+    #      PulseAudio - and it wedges a thread in the kernel's ALSA sequencer
+    #      (snd_use_lock_sync_helper, uninterruptible, ignores SIGKILL), so
+    #      Winamp can never finish closing. Setting it in the prefix registry
+    #      rather than on the launcher covers every way Winamp can be started:
+    #      the menu entry, the desktop icon, file associations and Open With
+    #      all go through the same prefix. Measured: one stuck thread on every
+    #      launch before, none after.
+    WINEPREFIX="$WINE_PREFIX" wine reg add 'HKCU\Software\Wine\DllOverrides' \
+        /v winealsa.drv /t REG_SZ /d "" /f >/dev/null 2>&1 || true
+
+    # (b2) The crash handler mails its report to bug@winamp.com through your
+    #      default mail client, which under Wine means a mail account setup
+    #      dialog appearing out of nowhere. Winamp is not maintained as a
+    #      desktop player any more, so nobody is reading those.
+    for junk in "Plugins/gen_crasher.dll" "reporter.exe"; do
+        [ -f "$WINE_PREFIX/drive_c/Program Files/Winamp/$junk" ] && \
+            mv "$WINE_PREFIX/drive_c/Program Files/Winamp/$junk" \
+               "$WINE_PREFIX/drive_c/Program Files/Winamp/$junk.disabled"
+    done
+
+    # (c) DirectSound output stutters whenever a menu opens, because it shares
     #     badly with the UI thread under Wine. WASAPI does not.
     if [ -f "$ini" ]; then
         sed -i 's/^outname=.*/outname=out_wasapi.dll/' "$ini"
@@ -76,7 +97,7 @@ apply_wine_fixes() {
         printf '[Winamp]\noutname=out_wasapi.dll\n' > "$ini"
     fi
 
-    # (c) MilkDrop 2 does not work under Wine's built-in d3dx9, whichever way
+    # (d) MilkDrop 2 does not work under Wine's built-in d3dx9, whichever way
     #     you point it. With shaders on it fails to compile them:
     #     "error compiling ps_2.0 warp shader ... unexpected KW_sampler_state".
     #     With MaxPSVersion=0 it stops erroring but never draws - you get the
@@ -240,6 +261,20 @@ StartupNotify=true
 EOF
     chmod +x "$LAUNCHER"
 
+    # A second entry for the times MIDI matters more than a clean exit.
+    cat > "$APPS_DIR/winamp-midi.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Winamp (MIDI enabled)
+Comment=Winamp with MIDI playback - leaves an unkillable process behind when it closes
+Exec=env WINEPREFIX="$WINE_PREFIX" WINEDLLOVERRIDES="winealsa.drv=b" wine "$WINAMP_EXE" %f
+Icon=$ICON_PATH
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+StartupNotify=true
+EOF
+    chmod +x "$APPS_DIR/winamp-midi.desktop"
+
     if [ -d "$DESKTOP_DIR" ]; then
         cp "$LAUNCHER" "$DESKTOP_DIR/winamp.desktop"
         chmod +x "$DESKTOP_DIR/winamp.desktop"
@@ -264,6 +299,7 @@ do_uninstall() {
 
     rm -rf "$WINE_PREFIX"
     rm -f "$LAUNCHER"
+    rm -f "$APPS_DIR/winamp-midi.desktop"
     rm -f "$DESKTOP_DIR/winamp.desktop"
     rm -rf "$ICON_DIR"
     update-desktop-database "$APPS_DIR" >/dev/null 2>&1 || true

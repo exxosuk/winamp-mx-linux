@@ -178,9 +178,27 @@ launches: every one had exactly one thread stuck there. Started with
 `WINEDLLOVERRIDES="winealsa.drv=d"`, the count was zero and Winamp exited
 cleanly leaving no zombie.
 
-The launcher this installer creates therefore disables that driver. The cost is
-MIDI playback (see below); everything else, WASAPI audio included, is
-unaffected. Zombies already created only clear on a reboot.
+The installer disables that driver **in the Wine prefix registry**, not on the
+launcher. That matters: a launcher only covers the ways you start Winamp from
+the menu or the desktop, and "Open With" from a file manager goes a different
+route entirely - it sets `WINEPREFIX` and nothing else, so a launcher-only fix
+leaves the bug in place for exactly the case you are most likely to hit.
+
+The cost is MIDI playback (see below); everything else, WASAPI audio included,
+is unaffected. Zombies already created only clear on a reboot.
+
+A second menu entry, **Winamp (MIDI enabled)**, starts it with the driver back
+on for when MIDI matters more than a clean exit.
+
+### A mail account setup dialog appears out of nowhere
+
+Winamp's crash handler mails its report to `bug@winamp.com` through your
+default mail client - `SendData=1` and `UseClient=1` in
+`Plugins/feedback.ini`. Under Wine that surfaces as a mail account setup
+wizard appearing after a crash, which is baffling if you do not know what
+asked for it. Nobody is reading those reports now, so the installer renames
+`Plugins/gen_crasher.dll` and `reporter.exe` out of the way. Rename them back
+if you want the handler.
 
 ### MIDI files do not play
 
