@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.9.0
+
+- Found and worked around the lock-up where Winamp would not close and could
+  not be killed. Wine loads `winealsa.drv` for MIDI, it opens an ALSA
+  sequencer client, and one thread wedges in `snd_use_lock_sync_helper` in
+  uninterruptible state - which ignores SIGKILL, so the process can never be
+  reaped. Three launches in a row each had exactly one such thread; with the
+  driver disabled the count was zero and Winamp exited cleanly
+- The launcher now sets `WINEDLLOVERRIDES="winealsa.drv=d"`. This costs MIDI
+  playback, which is documented as an opt-in with the trade-off spelled out
+- README documents both the symptom and how to diagnose it, since "cannot kill
+  a process" is not something most people will think to blame on a sound driver
+
+
 ## 1.8.0
 
 - MIDI playback confirmed working end to end: Wine's "no software synthesizer"

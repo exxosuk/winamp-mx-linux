@@ -158,6 +158,30 @@ d3dx9 in place of Wine's:
 then set `visplugin_name=vis_milk2.dll` back in `winamp.ini`. That pulls
 redistributable DLLs from Microsoft, so whether you want them is your call.
 
+### Winamp will not close, and cannot be killed
+
+Symptom: Winamp appears frozen, closing does nothing, and `kill -9` does not
+shift it. `ps` shows it as a zombie that will not go away:
+
+    $ ps -eo pid,stat,comm | grep winamp
+      33969 Zl   winamp.exe
+
+The cause is in the kernel, not in Winamp. Wine loads `winealsa.drv` purely for
+MIDI - audio itself goes through PulseAudio - and it opens an ALSA sequencer
+client at startup. One thread then wedges permanently:
+
+    tid 33971  state=D (uninterruptible)  wchan=snd_use_lock_sync_helper
+
+A thread in `D` state ignores SIGKILL by design, so the process can never be
+reaped and Wine cannot finish shutting down. Measured on three consecutive
+launches: every one had exactly one thread stuck there. Started with
+`WINEDLLOVERRIDES="winealsa.drv=d"`, the count was zero and Winamp exited
+cleanly leaving no zombie.
+
+The launcher this installer creates therefore disables that driver. The cost is
+MIDI playback (see below); everything else, WASAPI audio included, is
+unaffected. Zombies already created only clear on a reboot.
+
 ### MIDI files do not play
 
 Winamp lists `.MID`, `.MIDI`, `.RMI` and `.KAR` among the types it handles, but
@@ -182,6 +206,14 @@ Check it with `aconnect -l`: a `TiMidity` client should appear alongside
 `System` and `Midi Through`. **Then restart Winamp** - Wine enumerates MIDI
 devices once when a process starts, so a Winamp that was already running will
 not see a synth that appeared afterwards.
+
+**MIDI is off by default**, because the driver that provides it is the one that
+hangs Winamp on exit - see the section above. To turn it on, drop
+`WINEDLLOVERRIDES="winealsa.drv=d"` from the `Exec=` line in
+`~/.local/share/applications/winamp.desktop`. MIDI then plays, and Winamp goes
+back to leaving an unkillable process behind every time it closes. That is the
+whole trade, stated plainly; the default errs towards a player that shuts
+down.
 
 Everything else in Winamp's extension list is unaffected.
 

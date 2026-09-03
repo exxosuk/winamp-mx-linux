@@ -232,7 +232,7 @@ do_install() {
 Type=Application
 Name=Winamp
 Comment=It really whips the llama's ass
-Exec=env WINEPREFIX="$WINE_PREFIX" wine "$WINAMP_EXE"
+Exec=env WINEPREFIX="$WINE_PREFIX" WINEDLLOVERRIDES="winealsa.drv=d" wine "$WINAMP_EXE"
 Icon=$ICON_PATH
 Terminal=false
 Categories=AudioVideo;Audio;Player;
